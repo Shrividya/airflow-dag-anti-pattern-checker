@@ -1,0 +1,475 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.wrap{padding:1.5rem 0;max-width:900px}
+.header{margin-bottom:1.5rem}
+.header h1{font-size:22px;font-weight:500;color:var(--color-text-primary)}
+.header p{font-size:14px;color:var(--color-text-secondary);margin-top:4px}
+.editor-area{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+@media(max-width:640px){.editor-area{grid-template-columns:1fr}}
+.panel{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden}
+.panel-header{padding:10px 14px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-between}
+.panel-title{font-size:13px;font-weight:500;color:var(--color-text-secondary)}
+textarea{width:100%;height:320px;padding:12px;font-family:var(--font-mono);font-size:12px;background:var(--color-background-secondary);border:none;resize:vertical;color:var(--color-text-primary);outline:none;line-height:1.6}
+.btn{background:transparent;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:6px 14px;font-size:13px;cursor:pointer;color:var(--color-text-primary);transition:background .15s}
+.btn:hover{background:var(--color-background-secondary)}
+.btn-primary{background:var(--color-background-info);border-color:var(--color-border-info);color:var(--color-text-info)}
+.btn-primary:hover{opacity:.85}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
+.stat{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.75rem 1rem;text-align:center}
+.stat-num{font-size:22px;font-weight:500}
+.stat-lbl{font-size:12px;color:var(--color-text-secondary);margin-top:2px}
+.stat-num.high{color:#A32D2D}
+.stat-num.medium{color:#BA7517}
+.stat-num.low{color:#3B6D11}
+.finding{border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);margin-bottom:8px;overflow:hidden}
+.finding-header{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;background:var(--color-background-primary)}
+.finding-header:hover{background:var(--color-background-secondary)}
+.rule-badge{font-size:11px;font-weight:500;padding:2px 8px;border-radius:var(--border-radius-md);font-family:var(--font-mono)}
+.badge-high{background:#FCEBEB;color:#A32D2D}
+.badge-medium{background:#FAEEDA;color:#854F0B}
+.badge-low{background:#EAF3DE;color:#3B6D11}
+.finding-title{font-size:13px;font-weight:500;color:var(--color-text-primary);flex:1}
+.sev-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-high{background:#E24B4A}
+.dot-medium{background:#EF9F27}
+.dot-low{background:#639922}
+.finding-body{padding:12px;border-top:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);display:none}
+.finding-body.open{display:block}
+.finding-body p{font-size:13px;line-height:1.6;color:var(--color-text-secondary);margin-bottom:8px}
+.fix-block{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;margin-top:8px}
+.fix-label{font-size:11px;font-weight:500;color:#3B6D11;margin-bottom:4px}
+pre{font-family:var(--font-mono);font-size:11px;color:var(--color-text-primary);white-space:pre-wrap;line-height:1.6}
+.line-ref{font-size:11px;color:var(--color-text-tertiary);margin-left:auto;flex-shrink:0}
+.empty-state{text-align:center;padding:2rem;color:var(--color-text-secondary);font-size:14px}
+.cat-filter{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.cat-btn{font-size:11px;padding:3px 10px;border-radius:100px;border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);cursor:pointer;color:var(--color-text-secondary);transition:all .1s}
+.cat-btn.active{background:var(--color-background-info);border-color:var(--color-border-info);color:var(--color-text-info)}
+.chevron{font-size:10px;color:var(--color-text-tertiary);transition:transform .2s}
+.chevron.open{transform:rotate(90deg)}
+</style>
+
+<div class="wrap">
+  <div class="header">
+    <h1>Airflow DAG anti-pattern detector</h1>
+    <p>Paste any DAG below to catch performance, reliability, and maintainability issues before they reach production.</p>
+  </div>
+  <div class="editor-area">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">DAG code</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn" onclick="loadExample()">Load example ↗</button>
+          <button class="btn" onclick="clearCode()">Clear</button>
+        </div>
+      </div>
+      <textarea id="code-input" placeholder="# Paste your Airflow DAG here..." spellcheck="false"></textarea>
+      <div style="padding:10px 14px;border-top:0.5px solid var(--color-border-tertiary);display:flex;justify-content:flex-end">
+        <button class="btn btn-primary" onclick="analyze()">Analyze DAG ↗</button>
+      </div>
+    </div>
+    <div>
+      <div id="results-area">
+        <div class="empty-state" style="padding:4rem 1rem">
+          <div style="font-size:32px;margin-bottom:8px">⬅</div>
+          Paste a DAG and click <strong>Analyze DAG</strong> to see findings
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const RULES = [
+  {
+    code:"TLC001", cat:"TLC", catLabel:"Top-level code",
+    title:"Database call at module level", severity:"high",
+    // Only fires on lines with NO leading whitespace (module-level)
+    test(src){
+      const moduleLevel = /^(psycopg2\.connect|pymysql\.connect|\w+ = psycopg2|\w+ = pymysql|session\.query|engine\.execute)/m;
+      return moduleLevel.test(src);
+    },
+    linePattern:/^(psycopg2\.connect|pymysql\.connect|\w+ = psycopg2|\w+ = pymysql|session\.query|engine\.execute)/,
+    why:"Airflow parses every DAG file repeatedly to build the scheduler's task graph. Any database call at module level runs on EVERY parse cycle — potentially hundreds of times per minute. This stalls the scheduler and can crash it under load.",
+    fix:`# Bad — runs on every DAG parse
+conn = psycopg2.connect(os.environ['DB_URL'])
+
+# Good — move DB logic inside the task callable
+def my_task(**context):
+    conn = psycopg2.connect(os.environ['DB_URL'])`
+  },
+  {
+    code:"TLC002", cat:"TLC", catLabel:"Top-level code",
+    title:"Heavy library imported at module level", severity:"medium",
+    test(src){ return /^import (pandas|numpy|tensorflow|torch|sklearn|scipy|pyspark)/m.test(src); },
+    linePattern:/^import (pandas|numpy|tensorflow|torch|sklearn|scipy|pyspark)/,
+    why:"Large libraries (pandas, numpy, tensorflow) take 1–3 seconds to import. Since the scheduler parses your DAG file repeatedly, this cost multiplies and slows down DAG discovery for every DAG in your deployment.",
+    fix:`# Bad — imported at the top of the DAG file
+import pandas as pd
+
+# Good — import inside the task function only
+def process_data(**context):
+    import pandas as pd  # only loaded when task runs
+    df = pd.read_parquet(...)`
+  },
+  {
+    code:"TLC003", cat:"TLC", catLabel:"Top-level code",
+    title:"HTTP/API call at module level", severity:"high",
+    // Only fires if requests.get/post etc. appears on an unindented line
+    test(src){
+      return /^[^\s].*requests\.(get|post|put|delete|request)\s*\(/m.test(src);
+    },
+    linePattern:/^[^\s].*requests\.(get|post|put|delete|request)\s*\(/,
+    why:"HTTP calls at module scope run every time the scheduler parses the DAG. Network latency and failures cascade into scheduler instability. A single slow endpoint can block ALL DAG parsing.",
+    fix:`# Bad
+resp = requests.get("https://api.example.com/config")
+
+# Good — inside the task only
+def fetch_config(**context):
+    resp = requests.get("https://api.example.com/config")`
+  },
+  {
+    code:"RET001", cat:"RET", catLabel:"Retries",
+    title:"No retries configured on operator", severity:"high",
+    // Only fires if operators exist but neither retries= nor "retries": (default_args) found
+    test(src){
+      const hasOp = /(PythonOperator|BashOperator|SparkSubmitOperator|BigQueryOperator|EmailOperator)/.test(src);
+      const hasRetries = /retries\s*=|["']retries["']\s*:/.test(src);
+      return hasOp && !hasRetries;
+    },
+    linePattern:/(PythonOperator|BashOperator|SparkSubmitOperator|BigQueryOperator|EmailOperator)/,
+    why:"Transient failures (network blips, API rate limits, cluster hiccups) are normal in distributed systems. A task with no retries will fail permanently on the first hiccup. Retries are the safety net of reliable pipelines.",
+    fix:`# Bad
+t = PythonOperator(
+    task_id='load_data',
+    python_callable=load_data
+)
+
+# Good
+t = PythonOperator(
+    task_id='load_data',
+    python_callable=load_data,
+    retries=3,
+    retry_delay=timedelta(minutes=5)
+)`
+  },
+  {
+    code:"RET002", cat:"RET", catLabel:"Retries",
+    title:"Retries set but no retry_delay", severity:"medium",
+    test(src){ return /retries\s*=\s*[1-9]/.test(src) && !/retry_delay/.test(src); },
+    linePattern:/retries\s*=\s*[1-9]/,
+    why:"Without retry_delay, Airflow retries immediately — hammering a failing service with rapid-fire attempts. This can worsen an outage and makes logs hard to read. Always pair retries with a sensible delay.",
+    fix:`# Bad — retries immediately with no delay
+retries=3
+
+# Good — wait and back off
+retries=3,
+retry_delay=timedelta(minutes=5),
+retry_exponential_backoff=True`
+  },
+  {
+    code:"HDC001", cat:"HDC", catLabel:"Hardcoding",
+    title:"Hardcoded credential or secret", severity:"high",
+    test(src){ return /(password|passwd|secret|token|api_key)\s*=\s*['"][^'"]{4,}/i.test(src); },
+    linePattern:/(password|passwd|secret|token|api_key)\s*=\s*['"][^'"]{4,}/i,
+    why:"Hardcoded credentials end up in version control, scheduler logs, and audit trails. A single leaked repo exposes your entire infrastructure. Airflow has a dedicated Connections/Variables system built for this.",
+    fix:`# Bad — credential in plain text
+hook = PostgresHook(password="sup3rs3cr3t")
+
+# Good — use Airflow Connections
+hook = PostgresHook(postgres_conn_id="my_postgres_conn")
+# Set the password once via: Admin > Connections in the UI`
+  },
+  {
+    code:"HDC002", cat:"HDC", catLabel:"Hardcoding",
+    title:"datetime.now() used as start_date", severity:"high",
+    test(src){ return /start_date\s*=\s*datetime\.now\(\)/.test(src); },
+    linePattern:/start_date\s*=\s*datetime\.now\(\)/,
+    why:"Using datetime.now() as start_date causes Airflow to create a brand new DAG run every time the scheduler re-parses the file. You can end up with thousands of queued runs within hours of deploying the DAG.",
+    fix:`# Bad — creates infinite new runs on every parse
+start_date=datetime.now()
+
+# Good — fixed date + disable backfill
+start_date=datetime(2024, 1, 1),
+catchup=False`
+  },
+  {
+    code:"HDC003", cat:"HDC", catLabel:"Hardcoding",
+    title:"Hardcoded absolute file path", severity:"low",
+    test(src){ return /['"](\/home\/|\/tmp\/|\/var\/|\/mnt\/|C:\\\\)[^'"]+['"]/.test(src); },
+    linePattern:/['"](\/home\/|\/tmp\/|\/var\/|\/mnt\/|C:\\\\)[^'"]+['"]/,
+    why:"Absolute paths break when the DAG runs on a different worker, container, or environment. Use Airflow Variables or environment variables so the DAG works identically across dev, staging, and production.",
+    fix:`# Bad
+file_path = "/home/airflow/data/input.csv"
+
+# Good
+from airflow.models import Variable
+file_path = Variable.get("input_file_path")`
+  },
+  {
+    code:"DEP001", cat:"DEP", catLabel:"Dependencies",
+    title:"No task dependencies defined", severity:"medium",
+    test(src){ return /with DAG/.test(src) && !/(>>|<<|set_downstream|set_upstream|chain\()/.test(src); },
+    linePattern:/with DAG/,
+    why:"Without >> or << operators, all tasks run in parallel with no guaranteed order. This is occasionally intentional, but usually a bug — like sending a report before the data is ready.",
+    fix:`# Bad — tasks run in any order
+extract = PythonOperator(...)
+transform = PythonOperator(...)
+load = PythonOperator(...)
+
+# Good — explicit chain
+extract >> transform >> load`
+  },
+  {
+    code:"DEP002", cat:"DEP", catLabel:"Dependencies",
+    title:"catchup not explicitly set", severity:"medium",
+    test(src){ return /with DAG\s*\(/.test(src) && !/catchup\s*=/.test(src); },
+    linePattern:/with DAG\s*\(/,
+    why:"When catchup is not set, Airflow defaults to True and will backfill ALL DAG runs from start_date to now. If start_date is months ago and schedule is hourly, you instantly get thousands of queued runs, overloading workers.",
+    fix:`# Risky — defaults to catchup=True
+with DAG('my_dag', start_date=datetime(2024,1,1)) as dag:
+
+# Safe — be explicit
+with DAG(
+    'my_dag',
+    start_date=datetime(2024,1,1),
+    catchup=False
+) as dag:`
+  },
+  {
+    code:"ATO001", cat:"ATO", catLabel:"Atomicity",
+    title:"Large monolithic task callable (30+ lines)", severity:"medium",
+    // Mirror Python: find **context functions, measure each body independently
+    test(src){
+      return findLargeTaskFunctions(src.split('\n'), 30).length > 0;
+    },
+    linesFn(src){ return findLargeTaskFunctions(src.split('\n'), 30); },
+    linePattern:null,
+    why:"A task that does extract + transform + load in one function cannot be partially retried. If the load step fails, you re-run everything from scratch. Split tasks so each step is independently retryable and auditable.",
+    fix:`# Bad — one task does everything
+def etl_pipeline(**context):
+    data = extract_from_api()
+    clean = transform(data)
+    load_to_warehouse(clean)
+
+# Good — three separate atomic tasks
+extract = PythonOperator(task_id='extract', ...)
+transform = PythonOperator(task_id='transform', ...)
+load = PythonOperator(task_id='load', ...)
+extract >> transform >> load`
+  },
+  {
+    code:"ATO002", cat:"ATO", catLabel:"Atomicity",
+    title:"Dynamic task loop without TaskGroup", severity:"low",
+    test(src){ return /for \w+ in .+:\s*\n\s+\w+\s*=\s*(PythonOperator|BashOperator)/.test(src) && !/TaskGroup/.test(src); },
+    linePattern:/for \w+ in .+:/,
+    why:"Generating tasks in a loop works, but without a TaskGroup the UI shows dozens of flat tasks that are hard to navigate and monitor. For 5+ dynamically generated tasks, use TaskGroup for cleaner visualisation.",
+    fix:`# OK but hard to monitor at scale
+for item in items:
+    task = PythonOperator(task_id=f'process_{item}', ...)
+
+# Better — wrap in TaskGroup
+from airflow.utils.task_group import TaskGroup
+with TaskGroup('process_items') as tg:
+    for item in items:
+        PythonOperator(task_id=f'process_{item}', ...)`
+  }
+];
+
+function findLargeTaskFunctions(lines, threshold) {
+  const hits = [];
+  const fnRe = /^def \w+\s*\([^)]*\*\*context[^)]*\)\s*:/;
+  for (let i = 0; i < lines.length; i++) {
+    if (!fnRe.test(lines[i])) continue;
+    const fnStart = i + 1;
+    const indent = lines[i].length - lines[i].trimStart().length;
+    let bodyLines = 0, j = i + 1;
+    while (j < lines.length) {
+      const body = lines[j];
+      if (body.trim() === '') { j++; continue; }
+      const bIndent = body.length - body.trimStart().length;
+      if (bIndent <= indent) break;
+      bodyLines++;
+      j++;
+    }
+    if (bodyLines >= threshold) hits.push(fnStart);
+  }
+  return hits;
+}
+
+const EXAMPLES = [
+  `from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime
+import pandas as pd
+import psycopg2
+import requests
+
+conn = psycopg2.connect("postgresql://admin:sup3rs3cr3t@prod-db:5432/warehouse")
+rows = conn.execute("SELECT count(*) FROM orders").fetchall()
+config = requests.get("https://api.internal.com/config").json()
+
+def huge_etl_pipeline(**context):
+    import numpy as np
+    data = [r for r in rows]
+    df = pd.DataFrame(data)
+    df["total"] = df["amount"] * 1.2
+    df = df[df["total"] > 0]
+    df.to_parquet("/home/airflow/data/output.parquet")
+    conn2 = psycopg2.connect("postgresql://admin:pass123@prod-db:5432/warehouse")
+    cur = conn2.cursor()
+    cur.execute("INSERT INTO results SELECT * FROM staging")
+    conn2.commit()
+    requests.post("https://hooks.slack.com/xxx", json={"text": "done"})
+    extra1 = df.groupby("id").sum()
+    extra2 = df.merge(extra1, on="id")
+    extra3 = extra2[extra2["total"] > 100]
+    extra4 = extra3.sort_values("total")
+    extra5 = extra4.head(1000)
+
+with DAG(
+    "orders_pipeline",
+    start_date=datetime.now(),
+) as dag:
+    process = PythonOperator(
+        task_id="process_orders",
+        python_callable=huge_etl_pipeline,
+    )
+    notify = PythonOperator(
+        task_id="send_notification",
+        python_callable=lambda: print("done"),
+        retries=3,
+    )`,
+  `from airflow import DAG
+from airflow.operators.python import PythonOperator
+from airflow.models import Variable
+from datetime import datetime, timedelta
+
+default_args = {
+    "retries": 3,
+    "retry_delay": timedelta(minutes=5),
+    "retry_exponential_backoff": True,
+}
+
+def extract(**context):
+    import pandas as pd
+    from airflow.providers.postgres.hooks.postgres import PostgresHook
+    hook = PostgresHook(postgres_conn_id="warehouse_conn")
+    df = hook.get_pandas_df("SELECT * FROM orders")
+    df.to_parquet(Variable.get("staging_path") + "/orders.parquet")
+
+def transform(**context):
+    import pandas as pd
+    path = Variable.get("staging_path")
+    df = pd.read_parquet(path + "/orders.parquet")
+    df["total"] = df["amount"] * 1.2
+    df.to_parquet(path + "/orders_clean.parquet")
+
+def load(**context):
+    from airflow.providers.postgres.hooks.postgres import PostgresHook
+    hook = PostgresHook(postgres_conn_id="warehouse_conn")
+    hook.run("INSERT INTO results SELECT * FROM staging")
+
+with DAG(
+    "orders_pipeline_clean",
+    start_date=datetime(2024, 1, 1),
+    schedule_interval="@daily",
+    catchup=False,
+    default_args=default_args,
+) as dag:
+    t1 = PythonOperator(task_id="extract", python_callable=extract)
+    t2 = PythonOperator(task_id="transform", python_callable=transform)
+    t3 = PythonOperator(task_id="load", python_callable=load)
+    t1 >> t2 >> t3`
+];
+
+let exIdx = 0, activeFilter = "all", openCards = new Set(), allFindings = [];
+
+function loadExample() {
+  document.getElementById('code-input').value = EXAMPLES[exIdx % EXAMPLES.length];
+  exIdx++;
+  analyze();
+}
+
+function clearCode() {
+  document.getElementById('code-input').value = '';
+  document.getElementById('results-area').innerHTML = `<div class="empty-state" style="padding:4rem 1rem"><div style="font-size:32px;margin-bottom:8px">⬅</div>Paste a DAG and click <strong>Analyze DAG</strong> to see findings</div>`;
+  openCards = new Set(); allFindings = [];
+}
+
+function analyze() {
+  const src = document.getElementById('code-input').value;
+  if (!src.trim()) return;
+  allFindings = [];
+  for (const rule of RULES) {
+    if (!rule.test(src)) continue;
+    let lines = [];
+    if (rule.code === 'ATO001') {
+      lines = rule.linesFn(src);
+    } else if (rule.linePattern) {
+      src.split('\n').forEach((l, i) => { if (rule.linePattern.test(l)) lines.push(i+1); });
+    }
+    allFindings.push({...rule, matchedLines: lines});
+  }
+  activeFilter = "all"; openCards = new Set();
+  renderResults();
+}
+
+function renderResults() {
+  const area = document.getElementById('results-area');
+  if (!allFindings.length) {
+    area.innerHTML = `<div style="background:var(--color-background-success);border:0.5px solid var(--color-border-success);border-radius:var(--border-radius-lg);padding:1.5rem;text-align:center;color:var(--color-text-success);font-size:14px">No anti-patterns detected — clean DAG!</div>`;
+    return;
+  }
+  const filtered = activeFilter === "all" ? allFindings : allFindings.filter(f => f.severity === activeFilter || f.cat === activeFilter);
+  const high = allFindings.filter(f=>f.severity==='high').length;
+  const med  = allFindings.filter(f=>f.severity==='medium').length;
+  const low  = allFindings.filter(f=>f.severity==='low').length;
+  const cats = [...new Set(allFindings.map(f=>f.cat))];
+
+  let html = `<div class="stats-row">
+    <div class="stat"><div class="stat-num">${allFindings.length}</div><div class="stat-lbl">total</div></div>
+    <div class="stat"><div class="stat-num high">${high}</div><div class="stat-lbl">high</div></div>
+    <div class="stat"><div class="stat-num medium">${med}</div><div class="stat-lbl">medium</div></div>
+    <div class="stat"><div class="stat-num low">${low}</div><div class="stat-lbl">low</div></div>
+  </div>
+  <div class="cat-filter">
+    <button class="cat-btn ${activeFilter==='all'?'active':''}" onclick="setFilter('all')">All (${allFindings.length})</button>
+    <button class="cat-btn ${activeFilter==='high'?'active':''}" onclick="setFilter('high')">● High (${high})</button>
+    <button class="cat-btn ${activeFilter==='medium'?'active':''}" onclick="setFilter('medium')">◐ Medium (${med})</button>
+    <button class="cat-btn ${activeFilter==='low'?'active':''}" onclick="setFilter('low')">○ Low (${low})</button>`;
+  for (const c of cats) {
+    const n = allFindings.filter(f=>f.cat===c).length;
+    html += `<button class="cat-btn ${activeFilter===c?'active':''}" onclick="setFilter('${c}')">${c} (${n})</button>`;
+  }
+  html += `</div>`;
+
+  for (const f of filtered) {
+    const open = openCards.has(f.code);
+    const lineStr = f.matchedLines && f.matchedLines.length ? `line ${f.matchedLines[0]}` : '';
+    html += `<div class="finding">
+      <div class="finding-header" onclick="toggleCard('${f.code}')">
+        <div class="sev-dot dot-${f.severity}"></div>
+        <span class="rule-badge badge-${f.severity}">${f.code}</span>
+        <span class="finding-title">${f.title}</span>
+        ${lineStr ? `<span class="line-ref">${lineStr}</span>` : ''}
+        <span class="chevron ${open?'open':''}">▶</span>
+      </div>
+      <div class="finding-body ${open?'open':''}">
+        <p>${f.why}</p>
+        <div class="fix-block">
+          <div class="fix-label">Suggested fix</div>
+          <pre>${esc(f.fix)}</pre>
+        </div>
+      </div>
+    </div>`;
+  }
+  if (!filtered.length) html += `<div class="empty-state" style="padding:2rem">No findings in this category</div>`;
+  area.innerHTML = html;
+}
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toggleCard(c){ openCards.has(c)?openCards.delete(c):openCards.add(c); renderResults(); }
+function setFilter(f){ activeFilter=f; openCards=new Set(); renderResults(); }
+</script>
