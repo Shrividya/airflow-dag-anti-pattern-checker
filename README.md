@@ -163,9 +163,3 @@ Rule(
     fix="Use Variable.get('env') or os.environ['ENV'] instead.",
 )
 ```
-
----
-
-## License
-
-MIT
