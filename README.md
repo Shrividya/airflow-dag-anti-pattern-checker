@@ -10,7 +10,6 @@ No Airflow installation required. Runs in CI/CD pipelines with zero overhead.
 ## Quick start
 
 ```bash
-pip install airflow-antipattern
 
 # Check a single file
 airflow-antipattern check dags/my_dag.py
@@ -26,6 +25,11 @@ airflow-antipattern check dags/ --severity=high
 
 # JSON output for integration with other tools
 airflow-antipattern check dags/ --output=json
+```
+
+## Using Streamlit:
+```
+streamlit run ./streamlit_app.py
 ```
 
 Exit code `0` — no HIGH findings. Exit code `1` — one or more HIGH violations.
