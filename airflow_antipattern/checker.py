@@ -1,4 +1,12 @@
+import logging
 import re as _re
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
+from .rules import RULES, Rule
+
+_log = logging.getLogger(__name__)
 
 _TASK_FN_RE = _re.compile(r"^def \w+\s*\([^)]*\*\*context[^)]*\)\s*:", _re.MULTILINE)
 
@@ -6,7 +14,7 @@ _TASK_FN_RE = _re.compile(r"^def \w+\s*\([^)]*\*\*context[^)]*\)\s*:", _re.MULTI
 def _find_large_task_functions(lines: list[str], threshold: int = 30) -> list[int]:
     """
     Return the starting line numbers of task callables (**context functions)
-    whose body exceeds `threshold` non-blank lines.
+    whose body is at least `threshold` non-blank lines long.
 
     Think of it like measuring each recipe individually — we don't add up
     all the recipes in a cookbook to decide if one is too long.
@@ -36,16 +44,6 @@ def _find_large_task_functions(lines: list[str], threshold: int = 30) -> list[in
         i += 1
     return hits
 
-
-
-
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Optional
-
-from .rules import RULES, Rule
-
-
 @dataclass
 class Finding:
     rule: Rule
@@ -62,7 +60,6 @@ class Finding:
 
 
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
-
 
 def check_file(
     filepath: Path,
@@ -86,7 +83,7 @@ def check_file(
     findings: list[Finding] = []
 
     for rule in RULES:
-        # ── Filtering ──────────────────────────────────────────────────────
+        # Filtering
         if select and rule.code not in select:
             continue
         if ignore and rule.code in ignore:
@@ -95,15 +92,11 @@ def check_file(
             if SEVERITY_ORDER.get(rule.severity, 99) > SEVERITY_ORDER.get(min_severity, 99):
                 continue
 
-        # ── Special handling: ATO001 counts lines per function body ───────
+        # Special handling: ATO001 counts lines per function body
         if rule.code == "ATO001":
             matched_lines = _find_large_task_functions(lines, threshold=30)
             if matched_lines:
                 findings.append(Finding(rule=rule, filepath=filepath, line_numbers=matched_lines))
-            continue
-
-        # ── Match ──────────────────────────────────────────────────────────
-        if not rule.pattern.search(source):
             continue
 
         # Negative pattern: if present and matches → skip this rule
@@ -116,12 +109,32 @@ def check_file(
             if rule.pattern.search(line):
                 matched_lines.append(i)
 
+        if not matched_lines:
+            continue
+
         findings.append(Finding(rule=rule, filepath=filepath, line_numbers=matched_lines))
 
     # Sort by severity then rule code
     findings.sort(key=lambda f: (SEVERITY_ORDER.get(f.severity, 99), f.code))
     return findings
 
+
+def run_ruff_check(path: str) -> list[str]:
+    """Run 'ruff check --select AIR3' on *path* and return output lines."""
+    try:
+        result = subprocess.run(
+            ["ruff", "check", path, "--select", "AIR3"],
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        _log.warning("ruff not found — install with: pip install ruff")
+        return ["ruff not found — install with: pip install ruff"]
+
+    if result.returncode != 0:
+        _log.warning("ruff found issues in %s", path)
+        return result.stdout.splitlines()
+    return ["No issues found!"]
 
 def check_path(
     path: Path,
@@ -151,5 +164,4 @@ def check_path(
         findings = check_file(py_file, select, ignore, min_severity)
         if findings:
             results[py_file] = findings
-
     return results

@@ -1,8 +1,7 @@
 """Example clean DAG — no anti-patterns."""
 
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.models import Variable
+from airflow.sdk import DAG, Variable
+from airflow.providers.standard.operators.python import PythonOperator
 from datetime import datetime, timedelta
 
 default_args = {
@@ -13,7 +12,6 @@ default_args = {
 
 
 def extract(**context):
-    import pandas as pd
     from airflow.providers.postgres.hooks.postgres import PostgresHook
 
     hook = PostgresHook(postgres_conn_id="warehouse_conn")
@@ -42,7 +40,7 @@ def load(**context):
 with DAG(
     "orders_pipeline_clean",
     start_date=datetime(2024, 1, 1),
-    schedule_interval="@daily",
+    schedule="@daily",
     catchup=False,
     default_args=default_args,
 ) as dag:
