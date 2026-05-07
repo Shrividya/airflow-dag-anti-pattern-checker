@@ -177,7 +177,7 @@ with col_input:
 
     btn_col1, btn_col2, btn_col3 = st.columns(3)
     with btn_col1:
-        analyze = st.button("Analyze DAG", type="primary", use_container_width=True)
+        analyze = st.button("Analyze DAG", use_container_width=True)
     with btn_col2:
         run_ruff = st.button("Run RUFF check", use_container_width=True)
     with btn_col3:
