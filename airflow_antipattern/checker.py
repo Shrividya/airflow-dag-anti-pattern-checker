@@ -83,7 +83,6 @@ def check_file(
     findings: list[Finding] = []
 
     for rule in RULES:
-        # Filtering
         if select and rule.code not in select:
             continue
         if ignore and rule.code in ignore:
@@ -92,18 +91,15 @@ def check_file(
             if SEVERITY_ORDER.get(rule.severity, 99) > SEVERITY_ORDER.get(min_severity, 99):
                 continue
 
-        # Special handling: ATO001 counts lines per function body
         if rule.code == "ATO001":
             matched_lines = _find_large_task_functions(lines, threshold=30)
             if matched_lines:
                 findings.append(Finding(rule=rule, filepath=filepath, line_numbers=matched_lines))
             continue
 
-        # Negative pattern: if present and matches → skip this rule
         if rule.neg_pattern and rule.neg_pattern.search(source):
             continue
 
-        # Collect line numbers where the pattern matches
         matched_lines: list[int] = []
         for i, line in enumerate(lines, start=1):
             if rule.pattern.search(line):
@@ -114,7 +110,6 @@ def check_file(
 
         findings.append(Finding(rule=rule, filepath=filepath, line_numbers=matched_lines))
 
-    # Sort by severity then rule code
     findings.sort(key=lambda f: (SEVERITY_ORDER.get(f.severity, 99), f.code))
     return findings
 

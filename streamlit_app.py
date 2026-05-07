@@ -7,7 +7,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(__file__))
-from airflow_antipattern.checker import check_file, SEVERITY_ORDER
+from airflow_antipattern.checker import check_file, SEVERITY_ORDER,run_ruff_check
 from airflow_antipattern.rules import RULES
 
 st.set_page_config(
@@ -122,14 +122,12 @@ with DAG(
     t1 >> t2 >> t3
 '''
 
-# ── Page header ──────────────────────────────────────────────────────────────
 st.title("🔍 Airflow DAG anti-pattern detector")
 st.caption(
     "Paste your DAG code below to catch performance, reliability, and "
     "maintainability issues before they reach production."
 )
 
-# ── Sidebar: filters ─────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("Filters")
     min_sev = st.selectbox(
@@ -158,7 +156,6 @@ with st.sidebar:
                     f"`{r.code}` {SEV_ICON[r.severity]} **{r.title}**"
                 )
 
-# ── Main area ────────────────────────────────────────────────────────────────
 col_input, col_results = st.columns([1, 1], gap="medium")
 
 with col_input:
@@ -178,26 +175,51 @@ with col_input:
         label_visibility="collapsed",
     )
 
-    analyze = st.button("Analyze DAG", type="primary", use_container_width=True)
+    btn_col1, btn_col2, btn_col3 = st.columns(3)
+    with btn_col1:
+        analyze = st.button("Analyze DAG", type="primary", use_container_width=True)
+    with btn_col2:
+        run_ruff = st.button("Run RUFF check", use_container_width=True)
+    with btn_col3:
+        clear = st.button("Reset", use_container_width=True)
+
+if "ruff_check" not in st.session_state:
+    st.session_state["ruff_check"] = []
+if "findings" not in st.session_state:
+    st.session_state["findings"] = None
+
+if clear:
+    st.session_state["dag_code"] = ""
+    st.session_state["ruff_check"] = []
+    st.session_state["findings"] = None
+    st.rerun()
+
+if analyze and code.strip():
+    st.session_state["ruff_check"] = []
+    with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as f:
+        f.write(code)
+        tmp_path = Path(f.name)
+    findings = check_file(tmp_path, ignore=None, select=None, min_severity=min_sev)
+    tmp_path.unlink()
+    st.session_state["findings"] = [f for f in findings if f.rule.category in selected_cats]
+elif analyze and not code.strip():
+    st.warning("Paste some DAG code first.")
+
+if run_ruff and code.strip():
+    st.session_state["findings"] = None
+    with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as f:
+        f.write(code)
+        tmp_ruff_path = Path(f.name)
+    st.session_state["ruff_check"] = run_ruff_check(str(tmp_ruff_path))
+    tmp_ruff_path.unlink()
+elif run_ruff and not code.strip():
+    st.warning("Paste some DAG code first.")
 
 with col_results:
-    if analyze and code.strip():
-        # Write to a temp file so the checker can read it
-        with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as f:
-            f.write(code)
-            tmp_path = Path(f.name)
+    findings = st.session_state["findings"]
+    ruff_lines = st.session_state["ruff_check"]
 
-        findings = check_file(
-            tmp_path,
-            ignore=None,
-            select=None,
-            min_severity=min_sev,
-        )
-        tmp_path.unlink()
-
-        # Apply category filter
-        findings = [f for f in findings if f.rule.category in selected_cats]
-
+    if findings is not None:
         if not findings:
             st.success("No anti-patterns detected — clean DAG!")
         else:
@@ -231,12 +253,19 @@ with col_results:
                         st.markdown(f"**Suggested fix**")
                         st.code(f.rule.fix, language="python")
 
-    elif analyze and not code.strip():
-        st.warning("Paste some DAG code first.")
+    elif ruff_lines:
+        is_clean = ruff_lines == ["No issues found!"]
+        with st.container(border=True):
+            st.markdown("**🔎 Ruff check results — AIR3**")
+            if is_clean:
+                st.success("No AIR3 issues found!")
+            else:
+                st.code("\n".join(ruff_lines), language="text")
+
     else:
         st.markdown(
             "<div style='padding:4rem 0;text-align:center;color:gray;font-size:14px'>"
-            "Results will appear here after you click Analyze DAG"
+            "Results will appear here after you click Analyze DAG or Run RUFF check."
             "</div>",
             unsafe_allow_html=True,
         )
