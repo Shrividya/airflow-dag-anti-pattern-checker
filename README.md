@@ -1,4 +1,4 @@
-# airflow-antipattern
+# airflow-antipattern-checker
 
 **A static analysis linter for Apache Airflow DAGs — catch performance,
 reliability, and maintainability issues before they reach production.**
